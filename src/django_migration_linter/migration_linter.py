@@ -167,9 +167,9 @@ class MigrationLinter:
         if self.should_ignore_migration(
             app_label, migration_name, operations, is_initial=migration.initial
         ):
-            self.print_linting_msg(
-                app_label, migration_name, "IGNORE", MessageType.IGNORE
-            )
+            reason = self.get_ignore_migration_reason(operations)
+            msg = f"IGNORE - REASON: {reason}" if reason else "IGNORE"
+            self.print_linting_msg(app_label, migration_name, msg, MessageType.IGNORE)
             self.nb_ignored += 1
             return
 
@@ -415,7 +415,8 @@ class MigrationLinter:
 
         migrations = []
         for line in map(
-            clean_bytes_to_str, diff_process.stdout.readlines()  # type: ignore
+            clean_bytes_to_str,
+            diff_process.stdout.readlines(),  # type: ignore
         ):
             # Only gather lines that include added migrations.
             if self.is_migration_file(line):
@@ -455,7 +456,8 @@ class MigrationLinter:
         if diff_process.returncode != 0:
             output = []
             for line in map(
-                clean_bytes_to_str, diff_process.stderr.readlines()  # type: ignore
+                clean_bytes_to_str,
+                diff_process.stderr.readlines(),  # type: ignore
             ):
                 output.append(line)
             logger.error("Error while git diff command:\n{}".format("".join(output)))
@@ -506,6 +508,14 @@ class MigrationLinter:
             )
             or (self.ignore_initial_migrations and is_initial)
         )
+
+    def get_ignore_migration_reason(
+        self, operations: Iterable[Operation]
+    ) -> str | None:
+        for operation in operations:
+            if isinstance(operation, IgnoreMigration):
+                return operation.reason
+        return None
 
     def analyse_data_migration(
         self, migration: Migration

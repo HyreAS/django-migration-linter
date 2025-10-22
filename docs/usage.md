@@ -73,7 +73,7 @@ exclude_apps = users
 
 ## Ignoring migrations
 
-You can also ignore migrations by adding an `IgnoreMigration()` to your migration operations:
+You can also ignore migrations by adding an `IgnoreMigration('reason')` to your migration operations. A reason must be provided to document why the migration is being ignored:
 ```
 from django.db import migrations, models
 import django_migration_linter as linter
@@ -81,10 +81,12 @@ import django_migration_linter as linter
 class Migration(migrations.Migration):
     dependencies = [...]
     operations = [
-        linter.IgnoreMigration(),
+        linter.IgnoreMigration("Reason for ignoring this migration"),
         # ...
     ]
 ```
+
+The reason will be displayed in the linter output when the migration is ignored, helping maintain documentation about why certain migrations are excluded from linting.
 
 Or you can restrict the migrations that should be selected by a file containing there paths with the `--include-migrations-from` option.
 Or you can ignore all initial migrations with the `--ignore-initial-migrations` option.

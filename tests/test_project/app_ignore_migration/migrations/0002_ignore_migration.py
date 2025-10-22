@@ -11,7 +11,9 @@ class Migration(migrations.Migration):
     dependencies = [("app_ignore_migration", "0001_initial")]
 
     operations = [
-        linter.IgnoreMigration(),
+        linter.IgnoreMigration(
+            "This migration is used for testing the IgnoreMigration operation"
+        ),
         migrations.AddField(
             model_name="b",
             name="null_field_real",
