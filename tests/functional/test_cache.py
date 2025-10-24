@@ -17,7 +17,7 @@ from django_migration_linter import (
 
 
 class OperationsIgnoreMigration(Migration):
-    operations = [IgnoreMigration()]
+    operations = [IgnoreMigration("Test migration for cache functionality")]
 
 
 class CacheTestCase(unittest.TestCase):

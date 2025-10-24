@@ -7,7 +7,7 @@ from unittest.mock import patch
 from django.db import ProgrammingError
 from django.db.migrations import Migration
 
-from django_migration_linter import MigrationLinter
+from django_migration_linter import IgnoreMigration, MigrationLinter
 
 
 class LinterFunctionsTestCase(unittest.TestCase):
@@ -182,3 +182,20 @@ class LinterFunctionsTestCase(unittest.TestCase):
         self.assertFalse(
             linter.should_ignore_migration("app_correct", "0002_foo", is_initial=False)
         )
+
+    def test_get_ignore_migration_reason(self):
+        """Test that get_ignore_migration_reason extracts the reason from IgnoreMigration."""
+        linter = MigrationLinter()
+
+        # Test with IgnoreMigration operation
+        reason = "This is a test reason"
+        operations = [IgnoreMigration(reason)]
+        extracted_reason = linter.get_ignore_migration_reason(operations)
+        self.assertEqual(extracted_reason, reason)
+
+        # Test without IgnoreMigration operation
+        from django.db.migrations.operations import AddField
+
+        operations_without_ignore = []
+        extracted_reason = linter.get_ignore_migration_reason(operations_without_ignore)
+        self.assertIsNone(extracted_reason)
