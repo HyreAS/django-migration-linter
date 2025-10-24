@@ -7,27 +7,23 @@ class IgnoreMigration(Operation):
     """
     No-op migration operation that will enable the Django Migration Linter
     to detect if the entire migration should be ignored (through code).
-
-    A reason must be provided to document why this migration is being ignored.
     """
 
     reversible = True
     reduces_to_sql = False
     elidable = True
 
-    def __init__(self, reason: str):
+    def __init__(self, reason: str | None = None):
         """
-        Initialize IgnoreMigration with a required reason.
+        Initialize IgnoreMigration with an optional reason.
 
         Args:
-            reason: A non-empty string explaining why this migration is being ignored.
-
-        Raises:
-            ValueError: If reason is empty or contains only whitespace.
+            reason: Optional string explaining why this migration is being ignored.
+                   For backward compatibility, this parameter is optional, but providing
+                   a reason is strongly encouraged and will be enforced during linting
+                   for new migrations.
         """
-        if not reason or not reason.strip():
-            raise ValueError("IgnoreMigration requires a non-empty reason")
-        self.reason = reason.strip()
+        self.reason = reason.strip() if reason and reason.strip() else None
 
     def state_forwards(self, app_label, state):
         pass
@@ -39,7 +35,9 @@ class IgnoreMigration(Operation):
         pass
 
     def describe(self):
-        return (
-            f"The Django migration linter will ignore this migration - "
-            f"Reason: {self.reason}"
-        )
+        if self.reason:
+            return (
+                f"The Django migration linter will ignore this migration - "
+                f"Reason: {self.reason}"
+            )
+        return "The Django migration linter will ignore this migration"
