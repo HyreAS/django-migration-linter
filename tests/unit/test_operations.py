@@ -18,19 +18,33 @@ class IgnoreMigrationTestCase(unittest.TestCase):
         operation = IgnoreMigration(reason)
         self.assertEqual(operation.reason, "Valid reason with whitespace")
 
-    def test_ignore_migration_without_reason_raises_error(self):
-        """Test that IgnoreMigration raises ValueError when no reason is provided."""
-        with self.assertRaises(TypeError) as _:
-            IgnoreMigration()
+    def test_ignore_migration_without_reason_allowed(self):
+        """Test that IgnoreMigration can be instantiated without a reason for backward compatibility."""
+        operation = IgnoreMigration()
+        self.assertIsNone(operation.reason)
 
-    def test_ignore_migration_with_empty_string_raises_error(self):
-        """Test that IgnoreMigration raises ValueError for empty string."""
-        with self.assertRaises(ValueError) as context:
-            IgnoreMigration("")
-        self.assertIn("non-empty reason", str(context.exception))
+    def test_ignore_migration_with_empty_string(self):
+        """Test that IgnoreMigration with empty string sets reason to None."""
+        operation = IgnoreMigration("")
+        self.assertIsNone(operation.reason)
 
-    def test_ignore_migration_with_whitespace_only_raises_error(self):
-        """Test that IgnoreMigration raises ValueError for whitespace-only string."""
-        with self.assertRaises(ValueError) as context:
-            IgnoreMigration("   ")
-        self.assertIn("non-empty reason", str(context.exception))
+    def test_ignore_migration_with_whitespace_only(self):
+        """Test that IgnoreMigration with whitespace-only string sets reason to None."""
+        operation = IgnoreMigration("   ")
+        self.assertIsNone(operation.reason)
+
+    def test_ignore_migration_describe_with_reason(self):
+        """Test that describe() includes reason when provided."""
+        reason = "Test reason"
+        operation = IgnoreMigration(reason)
+        description = operation.describe()
+        self.assertIn(reason, description)
+        self.assertIn("Reason:", description)
+
+    def test_ignore_migration_describe_without_reason(self):
+        """Test that describe() handles missing reason gracefully."""
+        operation = IgnoreMigration()
+        description = operation.describe()
+        self.assertEqual(
+            description, "The Django migration linter will ignore this migration"
+        )

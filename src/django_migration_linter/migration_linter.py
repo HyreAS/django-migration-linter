@@ -164,12 +164,42 @@ class MigrationLinter:
 
         md5hash = self.get_migration_hash(app_label, migration_name)
 
-        if self.should_ignore_migration(
-            app_label, migration_name, operations, is_initial=migration.initial
-        ):
+        # Check if migration has IgnoreMigration operation without a reason
+        has_ignore_op = any(isinstance(o, IgnoreMigration) for o in operations)
+        if has_ignore_op:
             reason = self.get_ignore_migration_reason(operations)
-            msg = f"IGNORE - REASON: {reason}" if reason else "IGNORE"
-            self.print_linting_msg(app_label, migration_name, msg, MessageType.IGNORE)
+            if not reason:
+                # IgnoreMigration without reason - show error and continue linting
+                error = Issue(
+                    code="IGNORE_MIGRATION_MISSING_REASON",
+                    message="IgnoreMigration operation must include a reason. "
+                    "The migration will be linted because no reason was provided. "
+                    "Please add a reason: IgnoreMigration('your reason here')",
+                    table=None,
+                    column=None,
+                )
+                self.print_linting_msg(
+                    app_label,
+                    migration_name,
+                    f"({error.code}) {error.message}",
+                    MessageType.ERROR,
+                )
+                # Don't ignore - continue to lint this migration
+            else:
+                # IgnoreMigration with reason - ignore the migration
+                msg = f"IGNORE - REASON: {reason}"
+                self.print_linting_msg(
+                    app_label, migration_name, msg, MessageType.IGNORE
+                )
+                self.nb_ignored += 1
+                return
+
+        if self.should_ignore_migration(
+            app_label, migration_name, is_initial=migration.initial
+        ):
+            self.print_linting_msg(
+                app_label, migration_name, "IGNORE", MessageType.IGNORE
+            )
             self.nb_ignored += 1
             return
 
@@ -479,13 +509,13 @@ class MigrationLinter:
         self,
         app_label: str,
         migration_name: str,
-        operations: Iterable[Operation] = (),
         is_initial: bool = False,
     ) -> bool:
+        # Note: IgnoreMigration is handled separately in lint_migration()
+        # to check for missing reason
         return (
             (self.include_apps and app_label not in self.include_apps)
             or (self.exclude_apps and app_label in self.exclude_apps)
-            or any(isinstance(o, IgnoreMigration) for o in operations)
             or (
                 self.ignore_name_contains
                 and self.ignore_name_contains in migration_name

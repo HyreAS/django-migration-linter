@@ -193,9 +193,24 @@ class LinterFunctionsTestCase(unittest.TestCase):
         extracted_reason = linter.get_ignore_migration_reason(operations)
         self.assertEqual(extracted_reason, reason)
 
-        # Test without IgnoreMigration operation
-        from django.db.migrations.operations import AddField
-
         operations_without_ignore = []
         extracted_reason = linter.get_ignore_migration_reason(operations_without_ignore)
         self.assertIsNone(extracted_reason)
+
+    def test_should_ignore_migration_without_ignore_operation(self):
+        """Test that should_ignore_migration works for non-IgnoreMigration conditions."""
+        # IgnoreMigration operations are handled separately in lint_migration()
+        # so should_ignore_migration doesn't check for them
+
+        # Test with app exclusion
+        linter = MigrationLinter(exclude_apps=["app_excluded"])
+        self.assertTrue(
+            linter.should_ignore_migration(
+                "app_excluded", "0001_test", is_initial=False
+            )
+        )
+        self.assertFalse(
+            linter.should_ignore_migration(
+                "app_included", "0001_test", is_initial=False
+            )
+        )
