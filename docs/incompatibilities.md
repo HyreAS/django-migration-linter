@@ -40,6 +40,7 @@ You can ignore checks through the `--exclude-migration-tests` option by specifyi
 | `RUNPYTHON_MODEL_VARIABLE_NAME`    | The model variable name is different from the model class itself                                                                                                                                                                                                                                                                  | Warning      |
 | `RUNPYTHON_MIXED_OPERATIONS`       | RunPython operation is mixed with schema operations (data migrations should be in separate files)                                                                                                                                                                                                                                 | Error        |
 | `RUNSQL_REVERSIBLE`                | RunSQL data migration is not reversible (missing reverse SQL)                                                                                                                                                                                                                                                                     | Warning      |
+| `EMPTY_OPERATIONS`                 | The migration has an empty operations list and will do nothing (merge and squashed migrations are allowed)                                                                                                                                                                                                                       | Error        |
 | `CREATE_INDEX`                     | (Postgresql specific) Creating an index without the concurrent keyword will lock the table and may generate downtime                                                                                                                                                                                                              | Warning      |
 | `CREATE_INDEX_EXCLUSIVE`           | (Postgresql specific) Creating an index in a transaction acquiring an `EXCLUSIVE` lock (e.g. most `ALTER TABLE` statements acquire one) prolongs the exclusive lock on the table. Using concurrently clause does not address the issue. On the contrary, it prolongs the transaction, making it more dangerous in this situation. | Warning      |
 | `DROP_INDEX`                       | (Postgresql specific) Dropping an index without the concurrent keyword will lock the table and may generate downtime                                                                                                                                                                                                              | Warning      |
@@ -222,6 +223,29 @@ operations = [
 ```
 
 **Note**: Combining RunPython with RunSQL is acceptable, as both are data migration operations.
+
+### :arrow_forward: Empty operations
+
+A migration with an empty `operations` list does nothing when applied. This usually happens when a data migration function is written in the migration file but never wrapped in a `RunPython` operation:
+
+```python
+def backfill_slug(apps, schema_editor):
+    ...
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("app", "0001_initial"),
+    ]
+
+    operations = []  # backfill_slug is never run!
+```
+
+The migration applies successfully, so the mistake goes unnoticed until someone wonders why the data was never backfilled.
+
+:white_check_mark: **Solution**: add the intended operations, e.g. `migrations.RunPython(backfill_slug)`, or delete the migration if it is not needed.
+
+Merge migrations (several dependencies within the same app) and squashed migrations (`replaces` set) legitimately have empty operations and are not flagged.
 
 ## The special case of sqlite
 

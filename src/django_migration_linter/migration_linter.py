@@ -550,6 +550,16 @@ class MigrationLinter:
         if mixed_warnings:
             warnings += mixed_warnings
 
+        empty_errors, empty_ignored, empty_warnings = self.check_empty_operations(
+            migration
+        )
+        if empty_errors:
+            errors += empty_errors
+        if empty_ignored:
+            ignored += empty_ignored
+        if empty_warnings:
+            warnings += empty_warnings
+
         return errors, ignored, warnings
 
     @staticmethod
@@ -845,3 +855,67 @@ class MigrationLinter:
                 errors.append(issue)
 
         return errors, ignored, warnings
+
+    def check_empty_operations(
+        self, migration: Migration
+    ) -> tuple[list[Issue], list[Issue], list[Issue]]:
+        """
+        Check that the migration actually does something.
+
+        An empty operations list usually means a RunPython/RunSQL operation
+        was written but never added to `operations`, so applying the
+        migration silently does nothing.
+
+        Returns:
+            Tuple of (errors, ignored, warnings) where each is a list of Issue objects
+        """
+        errors: list[Issue] = []
+        ignored: list[Issue] = []
+        warnings: list[Issue] = []
+
+        if migration.operations:
+            return errors, ignored, warnings
+
+        # Merge migrations legitimately have no operations. They are
+        # recognisable by having several dependencies within their own app.
+        same_app_dependencies = [
+            dependency
+            for dependency in migration.dependencies
+            if dependency[0] == migration.app_label
+        ]
+        if len(same_app_dependencies) > 1:
+            return errors, ignored, warnings
+
+        # Squashed migrations can end up empty when all their operations
+        # were elided.
+        if migration.replaces:
+            return errors, ignored, warnings
+
+        message = "Migration has an empty operations list and will do nothing."
+        unused_functions = self.get_migration_module_functions(migration)
+        if unused_functions:
+            message += (
+                " It defines unused functions ({}) -"
+                " did you forget to add a RunPython operation?".format(
+                    ", ".join(unused_functions)
+                )
+            )
+
+        issue = Issue(code="EMPTY_OPERATIONS", message=message)
+        if issue.code in self.exclude_migration_tests:
+            ignored.append(issue)
+        else:
+            errors.append(issue)
+
+        return errors, ignored, warnings
+
+    @staticmethod
+    def get_migration_module_functions(migration: Migration) -> list[str]:
+        module = inspect.getmodule(type(migration))
+        if module is None:
+            return []
+        return [
+            name
+            for name, function in inspect.getmembers(module, inspect.isfunction)
+            if function.__module__ == module.__name__
+        ]

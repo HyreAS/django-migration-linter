@@ -348,6 +348,60 @@ class MixedRunPythonOperationsTestCase(unittest.TestCase):
         self.assertFalse(self.linter.has_errors)
 
 
+class EmptyOperationsTestCase(unittest.TestCase):
+    def setUp(self):
+        test_project_path = os.path.dirname(settings.BASE_DIR)
+        self.linter = MigrationLinter(
+            test_project_path,
+            include_apps=fixtures.EMPTY_OPERATIONS,
+        )
+
+    def test_empty_operations(self):
+        """An empty operations list is an error, since the migration does nothing."""
+        empty_migration = self.linter.migration_loader.disk_migrations[
+            ("app_empty_operations", "0005_empty_backfill")
+        ]
+        self.linter.lint_migration(empty_migration)
+
+        self.assertEqual(1, self.linter.nb_erroneous)
+        self.assertTrue(self.linter.has_errors)
+
+    def test_empty_operations_mentions_unused_functions(self):
+        empty_migration = self.linter.migration_loader.disk_migrations[
+            ("app_empty_operations", "0005_empty_backfill")
+        ]
+        errors, _, _ = self.linter.check_empty_operations(empty_migration)
+
+        self.assertEqual(1, len(errors))
+        self.assertIn("backfill_slug", errors[0].message)
+
+    def test_merge_migration_allowed(self):
+        """Merge migrations legitimately have no operations."""
+        merge_migration = self.linter.migration_loader.disk_migrations[
+            ("app_empty_operations", "0004_merge")
+        ]
+        self.linter.lint_migration(merge_migration)
+
+        self.assertEqual(0, self.linter.nb_erroneous)
+        self.assertFalse(self.linter.has_errors)
+        self.assertEqual(1, self.linter.nb_valid)
+
+    def test_empty_operations_can_be_excluded(self):
+        test_project_path = os.path.dirname(settings.BASE_DIR)
+        linter = MigrationLinter(
+            test_project_path,
+            include_apps=fixtures.EMPTY_OPERATIONS,
+            exclude_migration_tests=["EMPTY_OPERATIONS"],
+        )
+        empty_migration = linter.migration_loader.disk_migrations[
+            ("app_empty_operations", "0005_empty_backfill")
+        ]
+        linter.lint_migration(empty_migration)
+
+        self.assertEqual(0, linter.nb_erroneous)
+        self.assertFalse(linter.has_errors)
+
+
 class RunSQLMigrationTestCase(unittest.TestCase):
     def setUp(self):
         test_project_path = os.path.dirname(settings.BASE_DIR)
