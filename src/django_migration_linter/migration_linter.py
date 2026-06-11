@@ -873,6 +873,13 @@ class MigrationLinter:
         ignored: list[Issue] = []
         warnings: list[Issue] = []
 
+        # Only migration classes loaded from a migration file can be checked.
+        # A directly instantiated django Migration has empty operations and
+        # no module of its own.
+        module = inspect.getmodule(type(migration))
+        if module is None or module.__name__.startswith("django.db.migrations"):
+            return errors, ignored, warnings
+
         if migration.operations:
             return errors, ignored, warnings
 
