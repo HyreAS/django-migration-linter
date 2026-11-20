@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from .base import BaseAnalyser, Check, CheckMode, CheckType
 
@@ -59,8 +60,41 @@ def has_create_index(
     return not table_is_added_in_transaction
 
 
+def has_alter_multiple_tables_in_transaction(
+    sql_statements: list[str], **kwargs
+) -> bool:
+    """Return if a transaction takes ACCESS EXCLUSIVE locks on several tables.
+
+    The locks are taken one statement at a time and all held until commit.
+    A live transaction that already holds a lock on a later table and then
+    needs an earlier one deadlocks with the migration, and every query on the
+    earlier tables queues up behind it in the meantime.
+    """
+    if not (sql_statements and sql_statements[0].startswith("BEGIN")):
+        return False
+
+    created_tables = set()
+    altered_tables = set()
+    for sql in sql_statements:
+        if created := re.match(r"CREATE TABLE (\S+)", sql):
+            created_tables.add(created.group(1))
+        elif altered := re.match(r"ALTER TABLE (\S+)", sql):
+            altered_tables.add(altered.group(1))
+    return len(altered_tables - created_tables) > 1
+
+
 class PostgresqlAnalyser(BaseAnalyser):
-    migration_checks: list[Check] = [
+    specific_migration_checks: ClassVar[list[Check]] = [
+        Check(
+            code="ALTER_MULTIPLE_TABLES",
+            fn=has_alter_multiple_tables_in_transaction,
+            message=(
+                "ALTERING multiple tables in one transaction can deadlock "
+                "(use one migration per table)"
+            ),
+            mode=CheckMode.TRANSACTION,
+            type=CheckType.ERROR,
+        ),
         Check(
             code="CREATE_INDEX",
             fn=has_create_index,
@@ -77,8 +111,10 @@ class PostgresqlAnalyser(BaseAnalyser):
         ),
         Check(
             code="DROP_INDEX",
-            fn=lambda sql, **kw: re.search("DROP INDEX", sql)
-            and not re.search("INDEX CONCURRENTLY", sql),
+            fn=lambda sql, **kw: (
+                re.search("DROP INDEX", sql)
+                and not re.search("INDEX CONCURRENTLY", sql)
+            ),
             message="DROP INDEX locks table",
             mode=CheckMode.ONE_LINER,
             type=CheckType.WARNING,

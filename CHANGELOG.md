@@ -1,12 +1,45 @@
+## 7.1.0
+
+Bug:
+- Options and parameters that alter the linter output are now taken into account in the cache filename that is computed. As a side effect, all caches will be invalidated with this version bump. (#277)
+
+## 7.0.0
+
+Feature:
+- Django `sqlmigrate` errors are now caught properly by the linter, and raised in the final result. (#322)
+
+Miscellaneous:
+- Replace the unmaintained `toml` dependency with the standard library `tomllib` (#325)
+
+- Add support for Django 6.1
+- Add support for Python 3.15
+
+- Drop support of Python 3.9
+- Drop support of Django 3.2
+- Drop support of Django 4.0
+- Drop support of Django 4.1
+- Drop support of Django 4.2
+- Drop support of Django 5.0
+- Drop support of Django 5.1
+- Drop support of Python 3.10
+
+- Move project ownership from [3YOURMIND](https://github.com/3YOURMIND/) to [David](https://github.com/David-Wobrock/).
+
 ## 6.0.0
 
 Feature:
 - **Breaking change**: Handle custom Django app label when gathering migrations from git reference. (#262)
 This means that, an app that was previously referenced by its folder name, will now be referenced by its Django app label.
 
+Bug:
+- Consider `DEFAULT NULL` as no default value being defined (#302)
+
 Miscellaneous:
 - Add py.typed file (#303)
 - Add support for Django 5.2 (#304)
+- Add support for Python 3.14
+- Remove coverage from CI
+- Add support for Django 6.0
 
 ## 5.2.0
 

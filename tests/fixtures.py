@@ -11,6 +11,9 @@ ADD_NOT_NULL_COLUMN_FOLLOWED_BY_DEFAULT = "app_add_not_null_column_followed_by_d
 ADD_NOT_NULL_COLUMN_FOLLOWED_BY_DB_DEFAULT = (
     "app_add_not_null_column_followed_by_db_default"
 )
+ADD_NOT_NULL_COLUMN_WITH_NULL_DB_DEFAULT = (
+    "app_add_not_null_column_with_null_db_default"
+)
 ALTER_COLUMN = "app_alter_column"
 ALTER_COLUMN_DROP_NOT_NULL = "app_alter_column_drop_not_null"
 DROP_UNIQUE_TOGETHER = "app_unique_together"
@@ -22,3 +25,4 @@ MAKE_NOT_NULL_WITH_LIB_DEFAULT = "app_make_not_null_with_lib_default"
 CREATE_INDEX_EXCLUSIVE = "app_create_index_exclusive"
 CUSTOM_APP_NAME_DIRECTORY = "app_with_custom_name"
 CUSTOM_APP_LABEL = "my_custom_name"
+ADD_APP_CREATE_INDEX_CONCURRENTLY_EXCLUSIVE = "app_create_index_concurrently_exclusive"
