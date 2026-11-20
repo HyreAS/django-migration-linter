@@ -413,6 +413,41 @@ class PostgresqlAnalyserTestCase(SqlAnalyserTestCase):
         ]
         self.assertValidSql(sql)
 
+    def test_alter_multiple_tables_in_transaction(self):
+        sql = [
+            "BEGIN;",
+            'ALTER TABLE "invoice" ADD COLUMN "total_amount" numeric(10, 2) NULL;',
+            'ALTER TABLE "sales_order" ADD COLUMN "total_amount" numeric(10, 2) NULL;',
+            "COMMIT;",
+        ]
+        self.assertBackwardIncompatibleSql(sql, code="ALTER_MULTIPLE_TABLES")
+
+    def test_alter_single_table_in_transaction(self):
+        sql = [
+            "BEGIN;",
+            'ALTER TABLE "invoice" ADD COLUMN "total_amount" numeric(10, 2) NULL;',
+            'ALTER TABLE "invoice" ADD COLUMN "total_amount_currency" varchar(3) NULL;',
+            "COMMIT;",
+        ]
+        self.assertValidSql(sql)
+
+    def test_alter_multiple_tables_with_table_creation(self):
+        sql = [
+            "BEGIN;",
+            'CREATE TABLE "payment" ("id" bigint NOT NULL PRIMARY KEY);',
+            'ALTER TABLE "invoice" ADD COLUMN "total_amount" numeric(10, 2) NULL;',
+            'ALTER TABLE "payment" ADD CONSTRAINT "positive" CHECK ("id" > 0);',
+            "COMMIT;",
+        ]
+        self.assertValidSql(sql)
+
+    def test_alter_multiple_tables_without_transaction(self):
+        sql = [
+            'ALTER TABLE "invoice" ADD COLUMN "total_amount" numeric(10, 2) NULL;',
+            'ALTER TABLE "sales_order" ADD COLUMN "total_amount" numeric(10, 2) NULL;',
+        ]
+        self.assertValidSql(sql)
+
 
 class SqlUtilsTestCase(unittest.TestCase):
     def test_unknown_analyser_string(self):
