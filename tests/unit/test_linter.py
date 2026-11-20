@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -117,10 +118,13 @@ class LinterFunctionsTestCase(unittest.TestCase):
     )
     def test_raise_exception_on_sqlmigrate_error(self, call_command_mock):
         linter = MigrationLinter(
-            exclude_migration_tests=[], database="mysql", ignore_sqlmigrate_errors=False
+            exclude_migration_tests=[],
+            database="mysql",
+            ignore_sqlmigrate_errors=False,
         )
-        with self.assertRaises(ProgrammingError):
-            linter.get_sql("app_correct", "0002_foo")
+        linter.lint_migration(Migration("0002_foo", "app_correct"))
+        self.assertTrue(linter.has_errors)
+        self.assertEqual(linter.nb_ignored, 0)
 
     @patch(
         "django_migration_linter.migration_linter.call_command",
@@ -128,10 +132,13 @@ class LinterFunctionsTestCase(unittest.TestCase):
     )
     def test_ignore_exception_on_sqlmigrate_error(self, call_command_mock):
         linter = MigrationLinter(
-            exclude_migration_tests=[], database="mysql", ignore_sqlmigrate_errors=True
+            exclude_migration_tests=[],
+            database="mysql",
+            ignore_sqlmigrate_errors=True,
         )
-        sql_result = linter.get_sql("app_correct", "0002_foo")
-        self.assertEqual([], sql_result)
+        linter.lint_migration(Migration("0002_foo", "app_correct"))
+        self.assertFalse(linter.has_errors)
+        self.assertEqual(linter.nb_ignored, 1)
 
     def test_read_migrations_no_file(self):
         migration_list = MigrationLinter.read_migrations_list(None)
@@ -214,3 +221,51 @@ class LinterFunctionsTestCase(unittest.TestCase):
                 "app_included", "0001_test", is_initial=False
             )
         )
+
+    def test_all_params_are_specified_for_caching(self):
+        signature_params = set(inspect.signature(MigrationLinter.__init__).parameters)
+
+        cache_result_params = set(MigrationLinter.CACHED_RESULT_OPTIONS)
+        cache_native_params = {"path", "database", "cache_path", "no_cache"}
+        cache_irrelevant_params = {
+            "self",
+            "ignore_name_contains",
+            "ignore_name",
+            "include_name_contains",
+            "include_name",
+            "include_apps",
+            "exclude_apps",
+            "only_applied_migrations",
+            "only_unapplied_migrations",
+            "ignore_initial_migrations",
+            "quiet",
+            "no_output",
+        }
+
+        self.assertEqual(set(), cache_result_params & cache_native_params)
+        self.assertEqual(set(), cache_result_params & cache_irrelevant_params)
+        self.assertEqual(set(), cache_native_params & cache_irrelevant_params)
+
+        specified_params = (
+            cache_result_params | cache_native_params | cache_irrelevant_params
+        )
+        self.assertEqual(specified_params, signature_params)
+
+    def test_caching_options_depend_on_result_options(self):
+        default_options = MigrationLinter().compute_caching_options()
+        self.assertEqual(
+            list(MigrationLinter.CACHED_RESULT_OPTIONS),
+            list(default_options.keys()),
+        )
+
+        option_variants = [
+            {"exclude_migration_tests": ["NOT_NULL"]},
+            {"warnings_as_errors_tests": ["NOT_NULL"]},
+            {"all_warnings_as_errors": True},
+            {"ignore_sqlmigrate_errors": True},
+            {"analyser_string": "mysql"},
+        ]
+        for variant in option_variants:
+            with self.subTest(**variant):
+                changed_options = MigrationLinter(**variant).compute_caching_options()
+                self.assertNotEqual(default_options, changed_options)
