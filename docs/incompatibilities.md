@@ -206,8 +206,9 @@ Mixing RunPython data migrations with schema operations (like AddField, AlterFie
 ```python
 # 0001_add_slug_field.py
 operations = [
-    migrations.AddField('model', 'slug', models.CharField(default='')),
+    migrations.AddField("model", "slug", models.CharField(default="")),
 ]
+
 
 # 0002_backfill_slug.py
 class Migration(migrations.Migration):
@@ -217,9 +218,10 @@ class Migration(migrations.Migration):
         migrations.RunPython(backfill_slug_values),
     ]
 
+
 # 0003_make_slug_required.py
 operations = [
-    migrations.AlterField('model', 'slug', models.CharField()),
+    migrations.AlterField("model", "slug", models.CharField()),
 ]
 ```
 
